@@ -84,7 +84,7 @@ async function main() {
   };\n</script>`;
 
   /* JS 파일들 */
-  const scripts = ["menus.js", "recipes.js", "app.js"];
+  const scripts = ["menus.js", "places.js", "recipes.js", "app.js"];
   for (const file of scripts) {
     const tag = `<script src="assets/js/${file}"></script>`;
     if (!html.includes(tag)) throw new Error(`index.html 에서 ${file} 태그를 찾지 못했습니다.`);

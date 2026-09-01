@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FoodPick — 오늘 뭐 먹지</title>
+<title>용세라 — 오늘 뭐 먹지</title>
 <meta name="description" content="아침·점심·저녁 메뉴를 식권 한 장으로 뽑고, 인기 레시피까지 바로 펼쳐보는 랜덤 메뉴 추천기.">
 <meta name="theme-color" content="#241417">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🍚</text></svg>">
@@ -17,7 +17,7 @@
 <header class="masthead">
   <div class="wrap masthead__row">
     <a class="logo" href="./">
-      <span class="logo__text">FoodPick</span>
+      <span class="logo__text">용세라</span>
     </a>
     <p class="clock">
       <span class="clock__time" id="clockTime">--:--</span>
@@ -33,10 +33,19 @@
   <section class="picker" aria-labelledby="pickerTitle">
     <h1 class="picker__title" id="pickerTitle">
       <span class="picker__eyebrow">오늘 뭐 먹지</span>
-      식권 뽑기
+      <span id="pickerHeadline">식권 뽑기</span>
     </h1>
 
-    <div class="meals" role="tablist" aria-label="끼니 고르기">
+    <div class="modes" role="tablist" aria-label="무엇을 뽑을지">
+      <button class="mode" role="tab" data-mode="home" aria-selected="true">
+        <span class="mode__icon" aria-hidden="true">🍳</span><span class="mode__ko">집밥</span>
+      </button>
+      <button class="mode" role="tab" data-mode="eat" aria-selected="false">
+        <span class="mode__icon" aria-hidden="true">📍</span><span class="mode__ko">동네 맛집</span>
+      </button>
+    </div>
+
+    <div class="meals" id="mealTabs" role="tablist" aria-label="끼니 고르기">
       <button class="meal" role="tab" data-meal="b" aria-selected="false"><span class="meal__ko">아침</span><span class="meal__en">Morning</span></button>
       <button class="meal" role="tab" data-meal="l" aria-selected="false"><span class="meal__ko">점심</span><span class="meal__en">Noon</span></button>
       <button class="meal" role="tab" data-meal="d" aria-selected="false"><span class="meal__ko">저녁</span><span class="meal__en">Night</span></button>
@@ -61,14 +70,14 @@
         <div class="ticket__perf" aria-hidden="true"></div>
 
         <div class="ticket__stub">
-          <p class="ticket__label"><span id="stubMeal">점심</span> 식권</p>
+          <p class="ticket__label"><span id="stubMeal">점심</span><span id="stubSuffix"> 식권</span></p>
           <h2 class="ticket__name" id="name">김치찌개</h2>
           <ul class="ticket__meta" id="meta"></ul>
           <p class="ticket__no"><span aria-hidden="true">NO.</span><span id="serial">0000</span></p>
           <div class="stamp" id="stamp" aria-hidden="true">
             <span class="stamp__top">당첨</span>
             <span class="stamp__mid" id="stampMeal">점심</span>
-            <span class="stamp__bot">FOODPICK</span>
+            <span class="stamp__bot">용세라</span>
           </div>
         </div>
       </article>
@@ -86,6 +95,12 @@
       </div>
     </div>
     <p class="toast" id="toast" role="status" aria-live="polite"></p>
+
+    <div class="empty" id="placeEmpty" hidden>
+      <p class="empty__line">아직 등록된 맛집이 없습니다.</p>
+      <p class="empty__line"><code>assets/js/places.js</code> 에 직접 적거나,
+        <code>node tools/fetch-places.mjs</code> 로 근처 가게를 불러오세요.</p>
+    </div>
   </section>
 
   <!-- 2. 뽑힌 메뉴의 인기 레시피 -->
@@ -115,21 +130,26 @@
     </summary>
     <div class="panel__body">
       <fieldset class="field">
-        <legend class="field__label">종류</legend>
+        <legend class="field__label" id="cuisineLabel">종류</legend>
         <div class="chips" id="cuisineChips"></div>
       </fieldset>
 
-      <fieldset class="field">
+      <fieldset class="field" id="spicyField">
         <legend class="field__label">매운맛</legend>
         <div class="chips" id="spicyChips"></div>
       </fieldset>
 
-      <fieldset class="field">
-        <legend class="field__label">조리시간 <output id="minutesOut">전체</output></legend>
+      <fieldset class="field" id="priceField" hidden>
+        <legend class="field__label">가격대</legend>
+        <div class="chips" id="priceChips"></div>
+      </fieldset>
+
+      <fieldset class="field" id="minutesField">
+        <legend class="field__label"><span id="minutesLabel">조리시간</span> <output id="minutesOut">전체</output></legend>
         <input type="range" id="minutes" min="10" max="120" step="10" value="120">
       </fieldset>
 
-      <fieldset class="field field--row">
+      <fieldset class="field field--row" id="homeToggles">
         <label class="toggle"><input type="checkbox" id="vegOnly"> 채식만</label>
         <label class="toggle"><input type="checkbox" id="avoidRecent" checked> 최근 뽑은 메뉴 제외</label>
         <label class="toggle"><input type="checkbox" id="recipeOnly"> 레시피 있는 메뉴만</label>
@@ -171,11 +191,12 @@
 </main>
 
 <footer class="foot wrap">
-  <p>메뉴 <b id="totalCount">0</b>종 · 레시피 <b id="recipeTotal">0</b>건</p>
+  <p>메뉴 <b id="totalCount">0</b>종 · 레시피 <b id="recipeTotal">0</b>건 · 맛집 <b id="placeTotal">0</b>곳</p>
   <p class="foot__note">레시피 출처는 각 카드에 표기됩니다. 공공데이터는 출처 표시 조건으로 사용합니다.</p>
 </footer>
 
 <script src="assets/js/menus.js"></script>
+<script src="assets/js/places.js"></script>
 <script src="assets/js/recipes.js"></script>
 <script src="assets/js/app.js"></script>
 </body>

@@ -82,9 +82,9 @@ body {
 .logo__mark { font-size: 1.05rem; }
 
 .logo__text {
-  font-family: var(--util);
-  font-size: 1.4rem;
-  letter-spacing: .14em;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  letter-spacing: .02em;
   line-height: 1;
 }
 
@@ -126,6 +126,43 @@ body {
   letter-spacing: .22em;
   color: var(--yellow);
   margin-bottom: .55rem;
+}
+
+/* 집밥 / 동네 맛집 — 무엇을 뽑을지 고르는 상위 전환 */
+.modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .4rem;
+  margin-bottom: .9rem;
+  padding: .3rem;
+  border-radius: calc(var(--radius) + 3px);
+  background: rgba(0, 0, 0, .28);
+}
+
+.mode {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: .55rem .5rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--on-bg-dim);
+  transition: background-color .16s, color .16s;
+}
+
+.mode__ko { font-weight: 700; font-size: .95rem; }
+.mode__icon { font-size: 1rem; }
+
+.mode:hover { color: var(--on-bg); }
+
+.mode[aria-selected="true"] {
+  background: var(--paper);
+  color: var(--ink);
 }
 
 .meals {
@@ -362,6 +399,8 @@ body {
   letter-spacing: .14em;
   line-height: 1;
 }
+
+.stamp__bot { letter-spacing: .04em; }
 
 .stamp__mid {
   font-family: var(--display);

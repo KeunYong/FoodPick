@@ -23,6 +23,7 @@
 | 저장 | 레시피 저장, 메뉴 찜하기. 브라우저에만 남습니다(localStorage). |
 | 기록 | 최근 뽑은 메뉴 24건. "최근 뽑은 메뉴 제외" 필터와 연동됩니다. |
 | 공유 | `?m=메뉴이름` 링크 복사. 열면 그 메뉴가 바로 보입니다. |
+| 동네 맛집 | 모드를 바꾸면 집 근처 가게를 룰렛으로 뽑습니다. 목록은 직접 채웁니다. |
 
 ## 실행
 
@@ -43,7 +44,8 @@ GitHub Pages: Settings → Pages → Source `main` / `root`. 끝입니다.
 ## 데이터
 
 ```
-assets/js/menus.js     메뉴 165종 — 한 줄에 한 메뉴, 직접 편집하는 원본
+assets/js/menus.js     메뉴 158종 (집밥 121 · 반찬 7 · 외식 30)
+assets/js/places.js    동네 맛집 — 직접 채우는 곳
 assets/js/recipes.js   기본 레시피 11건 — 직접 작성. 앱의 데이터 모양 기준
 data/recipes.json      tools/fetch-recipes.mjs 가 생성 (있으면 병합)
 data/photos.json       tools/crawl.mjs 가 생성 (있으면 병합)
@@ -124,6 +126,29 @@ node tools/crawl.mjs --detail                          # 전체 (약 40분)
 - 썸네일과 레시피 저작권은 **사이트가 아니라 레시피를 올린 개인**에게 있습니다.
   수집한 이미지를 공개 사이트에 재배포하는 것은 별개의 판단이 필요합니다.
   그래서 `data/photos.json` 은 기본적으로 `.gitignore` 에 들어 있습니다.
+
+### 동네 맛집 채우기
+
+`assets/js/places.js` 에 직접 적는 게 가장 정확합니다. 본인이 가본 곳이어야
+룰렛이 쓸모 있습니다.
+
+```js
+{ name: "가게 이름", category: "한식", emoji: "🍲",
+  walk: 6, price: 1, tags: ["백반"], url: "https://map.kakao.com/?q=...",
+  phone: "031-000-0000", note: "점심 백반이 빠르다" }
+```
+
+근처에 뭐가 있는지 훑고 싶으면 카카오맵으로 후보를 뽑을 수 있습니다.
+
+```bash
+# REST API 키 무료 발급: https://developers.kakao.com
+node tools/fetch-places.mjs --key=REST키 --near="고양시 덕양구 원당 래미안 휴레스트"
+node tools/fetch-places.mjs --key=REST키 --near="..." --radius=800
+```
+
+기준 위치를 좌표로 바꾼 뒤 반경 안의 음식점·카페를 거리순으로 가져와
+`places.js` 에 붙여넣을 형태로 출력합니다. 나온 건 "근처 가게"이지 "맛집"이
+아니니, 가볼 만한 곳만 남기고 지우세요.
 
 ### 데이터 소스를 바꾸려면
 

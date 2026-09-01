@@ -56,8 +56,41 @@
     };
   });
 
+  /* 맛집을 메뉴와 같은 모양으로 맞춥니다. 이러면 룰렛·식권·찜·기록·공유가
+     그대로 재사용됩니다. id 는 메뉴 이름과 겹치지 않게 "p:" 를 붙입니다. */
+  var PLACE_CATS = ["한식", "중식", "일식", "양식", "아시안", "분식", "카페", "술집"];
+
+  var places = (window.FOODPICK_PLACES || [])
+    .filter(function (p) { return p && p.name; })
+    .map(function (p, i) {
+      return {
+        id: "p:" + p.name,
+        name: String(p.name),
+        emoji: p.emoji || "📍",
+        meals: "bld",
+        cuisine: PLACE_CATS.indexOf(p.category) !== -1 ? p.category : "기타",
+        minutes: numOrNull(p.walk),          /* 도보 분 */
+        spicy: 0,
+        veg: false,
+        role: "main",
+        tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
+        serial: "P" + String(i + 1).padStart(3, "0"),
+        hue: hueOf(p.name),
+        image: null,
+        link: isHttp(p.url) ? p.url : null,
+        isPlace: true,
+        price: [1, 2, 3].indexOf(Number(p.price)) !== -1 ? Number(p.price) : null,
+        phone: p.phone ? String(p.phone) : "",
+        note: p.note ? String(p.note) : ""
+      };
+    });
+
   var byId = {};
-  menus.forEach(function (m) { byId[m.id] = m; });
+  menus.concat(places).forEach(function (m) { byId[m.id] = m; });
+
+  function activeList() {
+    return state.mode === "eat" ? places : menus;
+  }
 
   /* ---------- 레시피 저장소 ---------- */
 
@@ -134,9 +167,15 @@
   var el = {
     clockTime: $("clockTime"), clockMeal: $("clockMeal"),
     mealTabs: Array.prototype.slice.call(document.querySelectorAll(".meal")),
+    modeTabs: Array.prototype.slice.call(document.querySelectorAll(".mode")),
+    mealTabsBox: $("mealTabs"), placeEmpty: $("placeEmpty"),
+    pickerHeadline: $("pickerHeadline"), homeToggles: $("homeToggles"),
+    cuisineLabel: $("cuisineLabel"), minutesLabel: $("minutesLabel"),
+    spicyField: $("spicyField"), priceField: $("priceField"), priceChips: $("priceChips"),
+    placeTotal: $("placeTotal"),
     ticketEmpty: $("ticketEmpty"), ticket: $("ticket"),
     photo: $("photo"), photoImg: $("photoImg"), photoEmoji: $("photoEmoji"),
-    stubMeal: $("stubMeal"), name: $("name"), meta: $("meta"), serial: $("serial"),
+    stubMeal: $("stubMeal"), stubSuffix: $("stubSuffix"), name: $("name"), meta: $("meta"), serial: $("serial"),
     stamp: $("stamp"), stampMeal: $("stampMeal"),
     pick: $("pick"), pickLabel: $("pickLabel"),
     fav: $("fav"), share: $("share"), search: $("search"),
@@ -165,9 +204,10 @@
   /* ---------- 상태 ---------- */
 
   var state = {
+    mode: "home",                /* home=집밥 eat=동네 맛집 */
     meal: mealOfHour(new Date().getHours()),
     cuisines: [], spicy: [], maxMinutes: 120,
-    vegOnly: false, avoidRecent: true, recipeOnly: false, includeSides: false, includeOut: false,
+    vegOnly: false, avoidRecent: true, recipeOnly: false, includeSides: false, includeOut: false, prices: [],
     current: null, rolling: false, todayNudge: 0
   };
 
@@ -254,15 +294,21 @@
       ? history.slice(0, RECENT_WINDOW).map(function (h) { return h.id; })
       : [];
 
-    return menus.filter(function (m) {
+    return activeList().filter(function (m) {
+      if (recent.indexOf(m.id) !== -1) return false;
+      if (state.cuisines.length && state.cuisines.indexOf(m.cuisine) === -1) return false;
+      if (m.minutes != null && m.minutes > state.maxMinutes) return false;
+
+      if (m.isPlace) {
+        if (state.prices.length && state.prices.indexOf(m.price) === -1) return false;
+        return true;
+      }
+
       if (!allowsRole(m)) return false;
       if (state.meal !== "*" && m.meals.indexOf(state.meal) === -1) return false;
-      if (state.cuisines.length && state.cuisines.indexOf(m.cuisine) === -1) return false;
       if (state.spicy.length && state.spicy.indexOf(m.spicy) === -1) return false;
-      if (m.minutes > state.maxMinutes) return false;
       if (state.vegOnly && !m.veg) return false;
       if (state.recipeOnly && !(recipes[m.id] || []).length) return false;
-      if (recent.indexOf(m.id) !== -1) return false;
       return true;
     });
   }
@@ -271,13 +317,18 @@
     var n = candidates().length;
     el.candidateNote.innerHTML = "후보 <b>" + n + "</b>개";
 
-    var active = state.cuisines.length + state.spicy.length
-      + (state.vegOnly ? 1 : 0) + (state.recipeOnly ? 1 : 0) + (state.includeSides ? 1 : 0) + (state.includeOut ? 1 : 0)
-      + (state.maxMinutes < 120 ? 1 : 0);
+    var active = state.mode === "eat"
+      ? state.cuisines.length + state.prices.length + (state.maxMinutes < 120 ? 1 : 0)
+      : state.cuisines.length + state.spicy.length
+        + (state.vegOnly ? 1 : 0) + (state.recipeOnly ? 1 : 0)
+        + (state.includeSides ? 1 : 0) + (state.includeOut ? 1 : 0)
+        + (state.maxMinutes < 120 ? 1 : 0);
     el.filterCount.textContent = active ? active + "개 적용 · 후보 " + n : "후보 " + n;
 
-    if (n === 0 && candidates(true).length === 0) el.pickLabel.textContent = "조건에 맞는 메뉴 없음";
-    else el.pickLabel.textContent = state.current ? "다시 뽑기" : "식권 뽑기";
+    var noun = state.mode === "eat" ? "맛집" : "메뉴";
+    if (n === 0 && candidates(true).length === 0) el.pickLabel.textContent = "조건에 맞는 " + noun + " 없음";
+    else if (state.current) el.pickLabel.textContent = "다시 뽑기";
+    else el.pickLabel.textContent = state.mode === "eat" ? "맛집 뽑기" : "식권 뽑기";
   }
 
   /* ---------- 뽑기 ---------- */
@@ -349,9 +400,12 @@
     el.ticketEmpty.hidden = true;
     el.ticket.hidden = false;
 
-    var mealLabel = state.meal === "*" ? ALL_DAY : MEALS[state.meal];
+    var mealLabel = menu.isPlace
+      ? "맛집"
+      : (state.meal === "*" ? ALL_DAY : MEALS[state.meal]);
     el.stubMeal.textContent = mealLabel;
     el.stampMeal.textContent = mealLabel;
+    el.stubSuffix.textContent = menu.isPlace ? " 다녀오기" : " 식권";
 
     el.name.textContent = menu.name;
     el.serial.textContent = menu.serial;
@@ -362,14 +416,26 @@
     renderMeta(menu);
 
     el.search.hidden = false;
-    el.search.href = menu.link || (SEARCH_URL + encodeURIComponent(menu.name));
-    el.search.title = "만개의레시피에서 " + menu.name + " 더 찾아보기";
+    if (menu.isPlace) {
+      el.search.href = menu.link || ("https://map.kakao.com/?q=" + encodeURIComponent(menu.name));
+      el.search.textContent = "🗺 지도에서 보기";
+      el.search.title = menu.name + " 카카오맵에서 열기";
+    } else {
+      el.search.href = menu.link || (SEARCH_URL + encodeURIComponent(menu.name));
+      el.search.textContent = "🔎 더 찾아보기";
+      el.search.title = "만개의레시피에서 " + menu.name + " 더 찾아보기";
+    }
 
     el.fav.disabled = false;
     el.share.disabled = false;
     syncFavButton();
 
-    renderRecipes(menu);
+    if (menu.isPlace) {
+      el.recipeSection.hidden = true;
+      if (menu.note) toast(menu.note);
+    } else {
+      renderRecipes(menu);
+    }
     animate();
 
     if (record) pushHistory(menu);
@@ -394,9 +460,23 @@
     el.photo.classList.remove("has-img");
   });
 
+  var PRICE_LABEL = { 1: "₩", 2: "₩₩", 3: "₩₩₩" };
+
   function renderMeta(menu) {
     var cuisine = CUISINES[menu.cuisine] || menu.cuisine;
-    var items = [{ text: cuisine }, { text: menu.minutes + "분" }];
+    var items = [{ text: cuisine }];
+
+    if (menu.isPlace) {
+      if (menu.minutes) items.push({ text: "걸어서 " + menu.minutes + "분" });
+      if (menu.price) items.push({ text: PRICE_LABEL[menu.price] });
+      menu.tags.slice(0, 3).forEach(function (t) { items.push({ text: t }); });
+
+      el.meta.textContent = "";
+      items.forEach(function (it) { el.meta.appendChild(makeEl("li", it.cls || "", it.text)); });
+      return;
+    }
+
+    items.push({ text: menu.minutes + "분" });
     if (menu.spicy > 0) items.push({ text: "🌶".repeat(menu.spicy), cls: "is-hot" });
     if (menu.veg) items.push({ text: "채식", cls: "is-veg" });
     if (menu.role === "side") items.push({ text: "반찬", cls: "is-side" });
@@ -747,9 +827,16 @@
     var anyMeal = state.meal === "*";
     var meal = anyMeal ? "*" : state.meal;
 
-    el.todayTitle.textContent = anyMeal ? "끼니 안 가리고 추천" : "오늘 " + MEALS[meal] + " 추천";
+    if (state.mode !== "eat") {
+      el.todayTitle.textContent = anyMeal ? "끼니 안 가리고 추천" : "오늘 " + MEALS[meal] + " 추천";
+    }
 
-    var pool = menus.filter(function (m) {
+    if (state.mode === "eat") {
+      el.todayTitle.textContent = "가볼 만한 곳";
+    }
+
+    var pool = activeList().filter(function (m) {
+      if (m.isPlace) return true;
       if (!allowsRole(m)) return false;
       if (!anyMeal && m.meals.indexOf(meal) === -1) return false;
       if (state.cuisines.length && state.cuisines.indexOf(m.cuisine) === -1) return false;
@@ -793,12 +880,14 @@
       var txt = makeEl("span", "card__text");
       txt.appendChild(makeEl("span", "card__name", m.name));
       var n = (recipes[m.id] || []).length;
-      txt.appendChild(makeEl("span", "card__sub",
-        (CUISINES[m.cuisine] || "") + " · " + m.minutes + "분" + (n ? " · 레시피 " + n : "")));
+      txt.appendChild(makeEl("span", "card__sub", m.isPlace
+        ? m.cuisine + (m.minutes ? " · 걸어서 " + m.minutes + "분" : "")
+          + (m.price ? " · " + PRICE_LABEL[m.price] : "")
+        : (CUISINES[m.cuisine] || "") + " · " + m.minutes + "분" + (n ? " · 레시피 " + n : "")));
       btn.appendChild(txt);
 
       btn.addEventListener("click", function () {
-        selectMeal(meal);
+        if (!m.isPlace) selectMeal(meal);
         show(m, true);
         el.recipeSection.scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -834,17 +923,39 @@
 
   /* ---------- 필터 UI ---------- */
 
-  function buildChips() {
+  function buildCuisineChips() {
+    el.cuisineChips.textContent = "";
+
+    if (state.mode === "eat") {
+      /* 실제로 등록된 업종만 보여줍니다 */
+      var seen = [];
+      places.forEach(function (p) { if (seen.indexOf(p.cuisine) === -1) seen.push(p.cuisine); });
+      seen.forEach(function (cat) {
+        el.cuisineChips.appendChild(chip(cat, function (on) { toggleIn(state.cuisines, cat, on); }));
+      });
+      return;
+    }
+
     Object.keys(CUISINES).forEach(function (key) {
       el.cuisineChips.appendChild(chip(CUISINES[key], function (on) {
         toggleIn(state.cuisines, key, on);
       }));
     });
+  }
+
+  function buildChips() {
+    buildCuisineChips();
 
     SPICY.forEach(function (label, level) {
       el.spicyChips.appendChild(chip(level === 0 ? label : "🌶".repeat(level), function (on) {
         toggleIn(state.spicy, level, on);
       }, label));
+    });
+
+    [1, 2, 3].forEach(function (level) {
+      el.priceChips.appendChild(chip(PRICE_LABEL[level], function (on) {
+        toggleIn(state.prices, level, on);
+      }));
     });
   }
 
@@ -869,9 +980,10 @@
   }
 
   function syncChips() {
-    var keys = Object.keys(CUISINES);
+    var keys = state.mode === "eat" ? [] : Object.keys(CUISINES);
     Array.prototype.forEach.call(el.cuisineChips.children, function (b, i) {
-      b.setAttribute("aria-pressed", state.cuisines.indexOf(keys[i]) !== -1 ? "true" : "false");
+      var key = keys.length ? keys[i] : b.textContent;
+      b.setAttribute("aria-pressed", state.cuisines.indexOf(key) !== -1 ? "true" : "false");
     });
     Array.prototype.forEach.call(el.spicyChips.children, function (b, i) {
       b.setAttribute("aria-pressed", state.spicy.indexOf(i) !== -1 ? "true" : "false");
@@ -896,7 +1008,8 @@
       maxMinutes: state.maxMinutes, vegOnly: state.vegOnly,
       avoidRecent: state.avoidRecent, recipeOnly: state.recipeOnly,
       includeSides: state.includeSides,
-      includeOut: state.includeOut
+      includeOut: state.includeOut,
+      mode: state.mode, prices: state.prices
     });
   }
 
@@ -910,6 +1023,8 @@
     state.recipeOnly = !!p.recipeOnly;
     state.includeSides = !!p.includeSides;
     state.includeOut = !!p.includeOut;
+    if (p.mode === "eat" || p.mode === "home") state.mode = p.mode;
+    if (Array.isArray(p.prices)) state.prices = p.prices;
     state.avoidRecent = p.avoidRecent !== false;
 
     el.minutes.value = state.maxMinutes;
@@ -920,6 +1035,43 @@
     el.avoidRecent.checked = state.avoidRecent;
     syncMinutes();
     syncChips();
+  }
+
+  function selectMode(mode) {
+    state.mode = mode;
+    state.current = null;
+    state.cuisines = [];
+
+    el.modeTabs.forEach(function (t) {
+      t.setAttribute("aria-selected", t.dataset.mode === mode ? "true" : "false");
+    });
+
+    var eat = mode === "eat";
+
+    /* 집밥 전용 UI 를 접습니다 */
+    el.mealTabsBox.hidden = eat;
+    el.homeToggles.hidden = eat;
+    el.spicyField.hidden = eat;
+    el.priceField.hidden = !eat;
+    el.recipeSection.hidden = true;
+    el.pickerHeadline.textContent = eat ? "맛집 뽑기" : "식권 뽑기";
+    el.cuisineLabel.textContent = eat ? "업종" : "종류";
+    el.minutesLabel.textContent = eat ? "걸어서" : "조리시간";
+
+    /* 결과판 초기화 */
+    el.ticket.hidden = true;
+    el.ticketEmpty.hidden = false;
+    el.fav.disabled = true;
+    el.share.disabled = true;
+    el.search.hidden = true;
+
+    el.placeEmpty.hidden = !(eat && places.length === 0);
+    el.pick.disabled = eat && places.length === 0;
+
+    buildCuisineChips();
+    savePrefs();
+    refreshCounts();
+    renderToday();
   }
 
   function selectMeal(meal) {
@@ -981,6 +1133,10 @@
 
   /* ---------- 이벤트 ---------- */
 
+  el.modeTabs.forEach(function (tab) {
+    tab.addEventListener("click", function () { selectMode(tab.dataset.mode); });
+  });
+
   el.mealTabs.forEach(function (tab) {
     tab.addEventListener("click", function () { selectMeal(tab.dataset.meal); });
   });
@@ -1034,6 +1190,7 @@
     state.recipeOnly = false;
     state.includeSides = false;
     state.includeOut = false;
+    state.prices = [];
     el.minutes.value = 120;
     el.vegOnly.checked = false;
     el.recipeOnly.checked = false;
@@ -1068,6 +1225,7 @@
     addRecipes(window.FOODPICK_RECIPES, "FoodPick 기본 레시피");
 
     el.totalCount.textContent = menus.length;
+    el.placeTotal.textContent = places.length;
     el.recipeTotalOut.textContent = recipeTotal();
 
     buildChips();
@@ -1083,6 +1241,8 @@
     } else {
       selectMeal(state.meal);
     }
+
+    selectMode(state.mode);
 
     renderHistory();
     renderFavs();
