@@ -28,7 +28,7 @@
      식권에 현재 시각 기준 끼니를 찍으면 모드와 어긋나므로 '종일' 로 표기합니다. */
   var ALL_DAY = "종일";
   var SEARCH_URL = "https://www.10000recipe.com/recipe/list.html?q=";
-
+ 
   var STORE = {
     history: "foodpick.history",
     favs: "foodpick.favs",
@@ -913,29 +913,42 @@
       .catch(function () { return null; });
   }
 
-  function loadExternal() {
-    fetchJSON("data/recipes.json").then(function (data) {
-      if (!data || !data.items) return;
-      addRecipes(data.items, data.sourceName || "수집 데이터");
-      el.recipeTotalOut.textContent = recipeTotal();
-      if (state.current) renderRecipes(state.current);
-      renderSaved();
-      renderToday();
-      refreshCounts();
+  function applyRecipeData(data) {
+    if (!data || !data.items) return;
+    addRecipes(data.items, data.sourceName || "수집 데이터");
+    el.recipeTotalOut.textContent = recipeTotal();
+    if (state.current) renderRecipes(state.current);
+    renderSaved();
+    renderToday();
+    refreshCounts();
+  }
+
+  function applyPhotoData(data) {
+    if (!data || !data.items) return;
+    var filled = 0;
+
+    Object.keys(data.items).forEach(function (name) {
+      var m = byId[name];
+      if (!m) return;
+      var it = data.items[name] || {};
+      if (isHttp(it.image)) { m.image = it.image; filled++; }
+      if (isHttp(it.link)) m.link = it.link;
     });
 
-    fetchJSON("data/photos.json").then(function (data) {
-      if (!data || !data.items) return;
-      var filled = 0;
-      Object.keys(data.items).forEach(function (name) {
-        var m = byId[name];
-        if (!m) return;
-        var it = data.items[name] || {};
-        if (typeof it.image === "string" && /^https?:\/\//.test(it.image)) { m.image = it.image; filled++; }
-        if (typeof it.link === "string" && /^https?:\/\//.test(it.link)) m.link = it.link;
-      });
-      if (filled && state.current) setPhoto(state.current);
-    });
+    if (filled && state.current) setPhoto(state.current);
+  }
+
+  function loadExternal() {
+    /* 단일 파일 빌드(tools/build-single.mjs)에서는 데이터가 이미 박혀 있습니다.
+       file:// 로 열면 fetch 가 막히므로 이 경로가 필요합니다. */
+    if (window.FOODPICK_INLINE) {
+      applyRecipeData(window.FOODPICK_INLINE.recipes);
+      applyPhotoData(window.FOODPICK_INLINE.photos);
+      return;
+    }
+
+    fetchJSON("data/recipes.json").then(applyRecipeData);
+    fetchJSON("data/photos.json").then(applyPhotoData);
   }
 
   /* ---------- 이벤트 ---------- */

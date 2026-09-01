@@ -13,4 +13,7 @@ data/recipes.json
 page.html
 *.page.html
 
+# 단일 파일 빌드 (수집 데이터가 박혀 있음)
+foodpick.html
+
 node_modules/
