@@ -49,6 +49,7 @@
       id: row[0], name: row[0], emoji: row[1], meals: row[2], cuisine: row[3],
       minutes: row[4], spicy: row[5], veg: !!row[6],
       tags: row[7] ? row[7].split(",") : [],
+      side: row[8] === "side",
       serial: String(i + 1).padStart(4, "0"),
       hue: hueOf(row[0]),
       image: null, link: null
@@ -150,6 +151,7 @@
     filterCount: $("filterCount"), cuisineChips: $("cuisineChips"), spicyChips: $("spicyChips"),
     minutes: $("minutes"), minutesOut: $("minutesOut"),
     vegOnly: $("vegOnly"), avoidRecent: $("avoidRecent"), recipeOnly: $("recipeOnly"),
+    includeSides: $("includeSides"),
     resetFilters: $("resetFilters"),
 
     boxSection: $("boxSection"), boxCount: $("boxCount"),
@@ -165,7 +167,7 @@
   var state = {
     meal: mealOfHour(new Date().getHours()),
     cuisines: [], spicy: [], maxMinutes: 120,
-    vegOnly: false, avoidRecent: true, recipeOnly: false,
+    vegOnly: false, avoidRecent: true, recipeOnly: false, includeSides: false,
     current: null, rolling: false, todayNudge: 0
   };
 
@@ -245,6 +247,8 @@
       : [];
 
     return menus.filter(function (m) {
+      /* 장조림 같은 반찬은 '오늘 뭐 먹지' 의 답이 아니라 기본으로 뺍니다. */
+      if (m.side && !state.includeSides) return false;
       if (state.meal !== "*" && m.meals.indexOf(state.meal) === -1) return false;
       if (state.cuisines.length && state.cuisines.indexOf(m.cuisine) === -1) return false;
       if (state.spicy.length && state.spicy.indexOf(m.spicy) === -1) return false;
@@ -261,7 +265,7 @@
     el.candidateNote.innerHTML = "후보 <b>" + n + "</b>개";
 
     var active = state.cuisines.length + state.spicy.length
-      + (state.vegOnly ? 1 : 0) + (state.recipeOnly ? 1 : 0)
+      + (state.vegOnly ? 1 : 0) + (state.recipeOnly ? 1 : 0) + (state.includeSides ? 1 : 0)
       + (state.maxMinutes < 120 ? 1 : 0);
     el.filterCount.textContent = active ? active + "개 적용 · 후보 " + n : "후보 " + n;
 
@@ -388,6 +392,7 @@
     var items = [{ text: cuisine }, { text: menu.minutes + "분" }];
     if (menu.spicy > 0) items.push({ text: "🌶".repeat(menu.spicy), cls: "is-hot" });
     if (menu.veg) items.push({ text: "채식", cls: "is-veg" });
+    if (menu.side) items.push({ text: "반찬", cls: "is-side" });
 
     /* 태그가 분류·채식 칩과 겹치면 빼고 넣습니다 ("분식" 이 두 번 나오는 문제) */
     var taken = { };
@@ -737,6 +742,7 @@
     el.todayTitle.textContent = anyMeal ? "끼니 안 가리고 추천" : "오늘 " + MEALS[meal] + " 추천";
 
     var pool = menus.filter(function (m) {
+      if (m.side && !state.includeSides) return false;
       if (!anyMeal && m.meals.indexOf(meal) === -1) return false;
       if (state.cuisines.length && state.cuisines.indexOf(m.cuisine) === -1) return false;
       if (m.minutes > state.maxMinutes) return false;
@@ -880,7 +886,8 @@
     save(STORE.prefs, {
       meal: state.meal, cuisines: state.cuisines, spicy: state.spicy,
       maxMinutes: state.maxMinutes, vegOnly: state.vegOnly,
-      avoidRecent: state.avoidRecent, recipeOnly: state.recipeOnly
+      avoidRecent: state.avoidRecent, recipeOnly: state.recipeOnly,
+      includeSides: state.includeSides
     });
   }
 
@@ -892,11 +899,13 @@
     if (typeof p.maxMinutes === "number") state.maxMinutes = p.maxMinutes;
     state.vegOnly = !!p.vegOnly;
     state.recipeOnly = !!p.recipeOnly;
+    state.includeSides = !!p.includeSides;
     state.avoidRecent = p.avoidRecent !== false;
 
     el.minutes.value = state.maxMinutes;
     el.vegOnly.checked = state.vegOnly;
     el.recipeOnly.checked = state.recipeOnly;
+    el.includeSides.checked = state.includeSides;
     el.avoidRecent.checked = state.avoidRecent;
     syncMinutes();
     syncChips();
@@ -990,6 +999,11 @@
     afterFilterChange();
   });
 
+  el.includeSides.addEventListener("change", function () {
+    state.includeSides = el.includeSides.checked;
+    afterFilterChange();
+  });
+
   el.avoidRecent.addEventListener("change", function () {
     state.avoidRecent = el.avoidRecent.checked;
     savePrefs();
@@ -1002,9 +1016,11 @@
     state.maxMinutes = 120;
     state.vegOnly = false;
     state.recipeOnly = false;
+    state.includeSides = false;
     el.minutes.value = 120;
     el.vegOnly.checked = false;
     el.recipeOnly.checked = false;
+    el.includeSides.checked = false;
     syncMinutes();
     syncChips();
     afterFilterChange();

@@ -327,6 +327,7 @@ body {
 
 .ticket__meta li.is-hot { background: rgba(216,65,47,.14); color: var(--red); }
 .ticket__meta li.is-veg { background: rgba(78,140,91,.16); color: var(--green); }
+.ticket__meta li.is-side { background: rgba(28,18,16,.1); color: rgba(28,18,16,.55); }
 
 .ticket__no {
   margin: .9rem 0 0;
