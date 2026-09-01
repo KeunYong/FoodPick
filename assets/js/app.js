@@ -424,8 +424,16 @@
     if (!list.length) {
       el.recipeCount.textContent = "";
       el.recipeEmpty.hidden = false;
-      el.recipeEmpty.textContent =
-        menu.name + " 레시피는 아직 없습니다. tools/fetch-recipes.mjs 를 실행하면 채워집니다.";
+      el.recipeEmpty.textContent = "";
+
+      el.recipeEmpty.appendChild(makeEl("p", "empty__line",
+        menu.name + " 레시피는 아직 준비 중입니다."));
+
+      var out = makeEl("a", "rcard__btn", "만개의레시피에서 " + menu.name + " 찾아보기");
+      out.href = SEARCH_URL + encodeURIComponent(menu.name);
+      out.target = "_blank";
+      out.rel = "noopener";
+      el.recipeEmpty.appendChild(out);
       return;
     }
 
