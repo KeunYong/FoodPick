@@ -97,9 +97,7 @@
     <p class="toast" id="toast" role="status" aria-live="polite"></p>
 
     <div class="empty" id="placeEmpty" hidden>
-      <p class="empty__line">아직 등록된 맛집이 없습니다.</p>
-      <p class="empty__line"><code>assets/js/places.js</code> 에 직접 적거나,
-        <code>node tools/fetch-places.mjs</code> 로 근처 가게를 불러오세요.</p>
+      <p class="empty__line">아직 등록한 가게가 없습니다. 아래에서 추가하세요.</p>
     </div>
   </section>
 
@@ -121,6 +119,89 @@
     </div>
     <ul class="cards" id="todayList"></ul>
   </section>
+
+  <!-- 맛집 관리 -->
+  <details class="panel" id="placePanel" hidden>
+    <summary class="panel__head">
+      <span class="panel__title">내 맛집 관리</span>
+      <span class="panel__count" id="placeCount">0곳</span>
+    </summary>
+    <div class="panel__body">
+
+      <form class="form" id="placeForm" autocomplete="off">
+        <div class="form__row">
+          <label class="form__field form__field--wide">
+            <span class="form__label">가게 이름</span>
+            <input type="text" id="fName" required maxlength="40" placeholder="원당식당">
+          </label>
+        </div>
+
+        <div class="form__row">
+          <label class="form__field">
+            <span class="form__label">업종</span>
+            <select id="fCategory">
+              <option>한식</option><option>중식</option><option>일식</option>
+              <option>양식</option><option>아시안</option><option>분식</option>
+              <option>치킨</option><option>카페</option><option>술집</option>
+            </select>
+          </label>
+          <label class="form__field">
+            <span class="form__label">걸어서(분)</span>
+            <input type="number" id="fWalk" min="1" max="60" placeholder="6">
+          </label>
+          <label class="form__field">
+            <span class="form__label">가격대</span>
+            <select id="fPrice">
+              <option value="">-</option>
+              <option value="1">₩ 저렴</option>
+              <option value="2">₩₩ 보통</option>
+              <option value="3">₩₩₩ 비쌈</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form__row">
+          <label class="form__field form__field--wide">
+            <span class="form__label">태그 <em>쉼표로 구분</em></span>
+            <input type="text" id="fTags" maxlength="60" placeholder="백반, 혼밥">
+          </label>
+        </div>
+
+        <div class="form__row">
+          <label class="form__field form__field--wide">
+            <span class="form__label">지도 링크 <em>비우면 이름으로 검색합니다</em></span>
+            <input type="url" id="fUrl" maxlength="300" placeholder="https://map.kakao.com/...">
+          </label>
+        </div>
+
+        <div class="form__row">
+          <label class="form__field form__field--wide">
+            <span class="form__label">메모</span>
+            <input type="text" id="fNote" maxlength="80" placeholder="점심 백반이 빠르다">
+          </label>
+        </div>
+
+        <div class="form__actions">
+          <button type="submit" class="btn btn--add" id="fSubmit">추가하기</button>
+          <button type="button" class="btn btn--reset" id="fCancel" hidden>수정 취소</button>
+        </div>
+      </form>
+
+      <ul class="places" id="placeList"></ul>
+
+      <details class="backup">
+        <summary class="backup__head">백업 · 옮기기</summary>
+        <p class="backup__note">등록한 가게는 이 브라우저에만 저장됩니다.
+          폰으로 옮기거나 백업하려면 아래 내용을 복사해 두세요.</p>
+        <textarea class="backup__box" id="placeBackup" rows="4" spellcheck="false"></textarea>
+        <div class="form__actions">
+          <button type="button" class="btn btn--reset" id="placeExport">현재 목록 복사</button>
+          <button type="button" class="btn btn--reset" id="placeImport">붙여넣은 내용 불러오기</button>
+        </div>
+      </details>
+
+    </div>
+  </details>
 
   <!-- 필터 -->
   <details class="panel" id="filterPanel">

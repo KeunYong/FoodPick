@@ -1045,3 +1045,173 @@ input[type="range"] {
   .card { flex-direction: column; align-items: flex-start; }
   .card__art { flex: 0 0 auto; width: 100%; height: 4.6rem; font-size: 1.9rem; }
 }
+
+/* ============================================================
+   맛집 등록 폼
+   ============================================================ */
+
+.form {
+  display: grid;
+  gap: .7rem;
+  margin-bottom: 1.2rem;
+}
+
+.form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.form__field {
+  display: grid;
+  gap: .3rem;
+  flex: 1 1 6rem;
+  min-width: 0;
+}
+
+.form__field--wide { flex-basis: 100%; }
+
+.form__label {
+  font-size: .74rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  color: var(--on-bg-dim);
+}
+
+.form__label em {
+  font-style: normal;
+  opacity: .7;
+}
+
+.form input,
+.form select,
+.backup__box {
+  font: inherit;
+  font-size: .88rem;
+  width: 100%;
+  padding: .45rem .6rem;
+  border-radius: 3px;
+  border: 1px solid rgba(240,228,221,.22);
+  background: rgba(0,0,0,.22);
+  color: var(--on-bg);
+}
+
+.form input::placeholder { color: rgba(184,156,150,.55); }
+
+.form input:focus,
+.form select:focus,
+.backup__box:focus {
+  outline: none;
+  border-color: var(--yellow);
+}
+
+.form select { appearance: none; cursor: pointer; }
+
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+.btn--add {
+  padding: .5rem 1rem;
+  background: var(--yellow);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: .88rem;
+}
+
+.btn--add:hover { background: #FFD35C; }
+
+/* 등록된 가게 목록 */
+
+.places {
+  list-style: none;
+  margin: 0 0 1.1rem;
+  padding: 0;
+  display: grid;
+  gap: .35rem;
+}
+
+.place {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .45rem .6rem;
+  border-radius: 3px;
+  border: 1px solid rgba(240,228,221,.14);
+}
+
+.place__main {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  min-width: 0;
+}
+
+.place__emoji { font-size: 1.1rem; }
+
+.place__text {
+  display: grid;
+  gap: .05rem;
+  min-width: 0;
+}
+
+.place__name {
+  font-weight: 700;
+  font-size: .88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place__sub {
+  font-size: .74rem;
+  color: var(--on-bg-dim);
+}
+
+.place__acts {
+  display: flex;
+  gap: .6rem;
+  flex: 0 0 auto;
+}
+
+.place__fixed {
+  font-size: .7rem;
+  color: var(--on-bg-dim);
+  opacity: .6;
+}
+
+.linkbtn--warn:hover { color: var(--red); }
+
+/* 백업 */
+
+.backup {
+  border-top: 1px solid rgba(240,228,221,.12);
+  padding-top: .9rem;
+}
+
+.backup__head {
+  cursor: pointer;
+  font-size: .8rem;
+  color: var(--on-bg-dim);
+  list-style: none;
+}
+
+.backup__head::-webkit-details-marker { display: none; }
+.backup__head:hover { color: var(--yellow); }
+
+.backup__note {
+  margin: .7rem 0;
+  font-size: .76rem;
+  color: var(--on-bg-dim);
+  line-height: 1.5;
+}
+
+.backup__box {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .75rem;
+  resize: vertical;
+  margin-bottom: .5rem;
+}

@@ -33,6 +33,7 @@
     history: "foodpick.history",
     favs: "foodpick.favs",
     saved: "foodpick.saved",
+    places: "foodpick.places",
     prefs: "foodpick.prefs"
   };
 
@@ -60,33 +61,54 @@
      그대로 재사용됩니다. id 는 메뉴 이름과 겹치지 않게 "p:" 를 붙입니다. */
   var PLACE_CATS = ["한식", "중식", "일식", "양식", "아시안", "분식", "카페", "술집"];
 
-  var places = (window.FOODPICK_PLACES || [])
-    .filter(function (p) { return p && p.name; })
-    .map(function (p, i) {
-      return {
-        id: "p:" + p.name,
-        name: String(p.name),
-        emoji: p.emoji || "📍",
-        meals: "bld",
-        cuisine: PLACE_CATS.indexOf(p.category) !== -1 ? p.category : "기타",
-        minutes: numOrNull(p.walk),          /* 도보 분 */
-        spicy: 0,
-        veg: false,
-        role: "main",
-        tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
-        serial: "P" + String(i + 1).padStart(3, "0"),
-        hue: hueOf(p.name),
-        image: null,
-        link: isHttp(p.url) ? p.url : null,
-        isPlace: true,
-        price: [1, 2, 3].indexOf(Number(p.price)) !== -1 ? Number(p.price) : null,
-        phone: p.phone ? String(p.phone) : "",
-        note: p.note ? String(p.note) : ""
-      };
+  var PLACE_EMOJI = {
+    한식: "🍚", 중식: "🥡", 일식: "🍣", 양식: "🍝", 아시안: "🍜",
+    분식: "🌶", 치킨: "🍗", 카페: "☕", 술집: "🍻"
+  };
+
+  function toPlace(p, i, editable) {
+    var category = PLACE_CATS.indexOf(p.category) !== -1 ? p.category : "한식";
+    return {
+      id: "p:" + p.name,
+      name: String(p.name),
+      emoji: p.emoji || PLACE_EMOJI[category] || "📍",
+      meals: "bld",
+      cuisine: category,
+      minutes: numOrNull(p.walk),          /* 걸어서 몇 분 */
+      spicy: 0,
+      veg: false,
+      role: "main",
+      tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
+      serial: "P" + String(i + 1).padStart(3, "0"),
+      hue: hueOf(p.name),
+      image: null,
+      link: isHttp(p.url) ? p.url : null,
+      isPlace: true,
+      editable: !!editable,
+      price: [1, 2, 3].indexOf(Number(p.price)) !== -1 ? Number(p.price) : null,
+      phone: p.phone ? String(p.phone) : "",
+      note: p.note ? String(p.note) : ""
+    };
+  }
+
+  var places = [];
+  var byId = {};
+
+  /* 코드에 적어둔 목록(places.js) + 웹에서 등록한 목록(localStorage) */
+  function rebuildPlaces() {
+    var fixed = (window.FOODPICK_PLACES || []).filter(function (p) { return p && p.name; });
+    var taken = {};
+    places = [];
+
+    fixed.concat(userPlaces).forEach(function (p) {
+      if (!p || !p.name || taken[p.name]) return;
+      taken[p.name] = true;
+      places.push(toPlace(p, places.length, fixed.indexOf(p) === -1));
     });
 
-  var byId = {};
-  menus.concat(places).forEach(function (m) { byId[m.id] = m; });
+    byId = {};
+    menus.concat(places).forEach(function (m) { byId[m.id] = m; });
+  }
 
   function activeList() {
     return state.mode === "eat" ? places : menus;
@@ -173,6 +195,11 @@
     cuisineLabel: $("cuisineLabel"), minutesLabel: $("minutesLabel"),
     spicyField: $("spicyField"), priceField: $("priceField"), priceChips: $("priceChips"),
     placeTotal: $("placeTotal"),
+    placePanel: $("placePanel"), placeCount: $("placeCount"), placeList: $("placeList"),
+    placeForm: $("placeForm"), fName: $("fName"), fCategory: $("fCategory"),
+    fWalk: $("fWalk"), fPrice: $("fPrice"), fTags: $("fTags"), fUrl: $("fUrl"), fNote: $("fNote"),
+    fSubmit: $("fSubmit"), fCancel: $("fCancel"),
+    placeBackup: $("placeBackup"), placeExport: $("placeExport"), placeImport: $("placeImport"),
     ticketEmpty: $("ticketEmpty"), ticket: $("ticket"),
     photo: $("photo"), photoImg: $("photoImg"), photoEmoji: $("photoEmoji"),
     stubMeal: $("stubMeal"), stubSuffix: $("stubSuffix"), name: $("name"), meta: $("meta"), serial: $("serial"),
@@ -214,6 +241,8 @@
   var history = load(STORE.history, []);
   var favs = load(STORE.favs, []);
   var saved = load(STORE.saved, []);   /* [{ id, menu, title }] */
+  var userPlaces = load(STORE.places, []);   /* 웹에서 등록한 가게 */
+  var editingName = null;                    /* 수정 중인 가게 이름 */
 
   /* ---------- 유틸 ---------- */
 
@@ -897,6 +926,225 @@
     });
   }
 
+  /* ---------- 맛집 관리 ---------- */
+
+  function placeIndex(name) {
+    for (var i = 0; i < userPlaces.length; i++) {
+      if (userPlaces[i].name === name) return i;
+    }
+    return -1;
+  }
+
+  function readForm() {
+    var name = el.fName.value.trim();
+    if (!name) return null;
+
+    return {
+      name: name,
+      category: el.fCategory.value,
+      walk: el.fWalk.value ? Number(el.fWalk.value) : null,
+      price: el.fPrice.value ? Number(el.fPrice.value) : null,
+      tags: el.fTags.value.split(",").map(function (t) { return t.trim(); }).filter(Boolean).slice(0, 4),
+      url: el.fUrl.value.trim(),
+      note: el.fNote.value.trim()
+    };
+  }
+
+  function fillForm(p) {
+    el.fName.value = p ? p.name : "";
+    el.fCategory.value = p && p.category ? p.category : "한식";
+    el.fWalk.value = p && p.walk ? p.walk : "";
+    el.fPrice.value = p && p.price ? p.price : "";
+    el.fTags.value = p && p.tags ? p.tags.join(", ") : "";
+    el.fUrl.value = p && p.url ? p.url : "";
+    el.fNote.value = p && p.note ? p.note : "";
+  }
+
+  function startEdit(name) {
+    var i = placeIndex(name);
+    if (i === -1) return;
+
+    editingName = name;
+    fillForm(userPlaces[i]);
+    el.fSubmit.textContent = "수정 저장";
+    el.fCancel.hidden = false;
+    el.placePanel.open = true;
+    el.fName.focus();
+  }
+
+  function endEdit() {
+    editingName = null;
+    fillForm(null);
+    el.fSubmit.textContent = "추가하기";
+    el.fCancel.hidden = true;
+  }
+
+  function submitPlace(e) {
+    e.preventDefault();
+
+    var entry = readForm();
+    if (!entry) {
+      toast("가게 이름을 적어주세요.");
+      el.fName.focus();
+      return;
+    }
+
+    var existing = placeIndex(entry.name);
+
+    if (editingName) {
+      var at = placeIndex(editingName);
+      if (existing !== -1 && existing !== at) {
+        toast("같은 이름의 가게가 이미 있습니다.");
+        return;
+      }
+      userPlaces[at] = entry;
+      toast(entry.name + " 수정했습니다.");
+    } else {
+      if (existing !== -1) {
+        toast("이미 등록된 가게입니다.");
+        return;
+      }
+      userPlaces.unshift(entry);
+      toast(entry.name + " 추가했습니다.");
+    }
+
+    save(STORE.places, userPlaces);
+    endEdit();
+    afterPlacesChanged();
+  }
+
+  function removePlace(name) {
+    var i = placeIndex(name);
+    if (i === -1) return;
+
+    userPlaces.splice(i, 1);
+    save(STORE.places, userPlaces);
+    if (editingName === name) endEdit();
+
+    if (state.current && state.current.name === name) {
+      state.current = null;
+      el.ticket.hidden = true;
+      el.ticketEmpty.hidden = false;
+    }
+
+    toast(name + " 삭제했습니다.");
+    afterPlacesChanged();
+  }
+
+  function afterPlacesChanged() {
+    rebuildPlaces();
+    el.placeTotal.textContent = places.length;
+    renderPlaceList();
+    buildCuisineChips();
+    syncChips();
+    el.placeEmpty.hidden = !(state.mode === "eat" && places.length === 0);
+    el.pick.disabled = state.mode === "eat" && places.length === 0;
+    refreshCounts();
+    renderToday();
+  }
+
+  function renderPlaceList() {
+    el.placeCount.textContent = places.length + "곳";
+    el.placeList.textContent = "";
+
+    places.forEach(function (p) {
+      var li = makeEl("li", "place");
+
+      var main = makeEl("div", "place__main");
+      main.appendChild(makeEl("span", "place__emoji", p.emoji));
+
+      var text = makeEl("div", "place__text");
+      text.appendChild(makeEl("span", "place__name", p.name));
+
+      var bits = [p.cuisine];
+      if (p.minutes) bits.push("걸어서 " + p.minutes + "분");
+      if (p.price) bits.push(PRICE_LABEL[p.price]);
+      text.appendChild(makeEl("span", "place__sub", bits.join(" · ")));
+      main.appendChild(text);
+      li.appendChild(main);
+
+      var acts = makeEl("div", "place__acts");
+
+      if (p.editable) {
+        var edit = makeEl("button", "linkbtn", "수정");
+        edit.type = "button";
+        edit.addEventListener("click", function () { startEdit(p.name); });
+        acts.appendChild(edit);
+
+        var del = makeEl("button", "linkbtn linkbtn--warn", "삭제");
+        del.type = "button";
+        del.addEventListener("click", function () {
+          if (window.confirm(p.name + " 을(를) 삭제할까요?")) removePlace(p.name);
+        });
+        acts.appendChild(del);
+      } else {
+        acts.appendChild(makeEl("span", "place__fixed", "코드"));
+      }
+
+      li.appendChild(acts);
+      el.placeList.appendChild(li);
+    });
+  }
+
+  function exportPlaces() {
+    var text = JSON.stringify(userPlaces, null, 2);
+    el.placeBackup.value = text;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(function () { toast("목록을 복사했습니다."); })
+        .catch(function () { toast("아래 칸의 내용을 복사하세요."); });
+    } else {
+      toast("아래 칸의 내용을 복사하세요.");
+    }
+  }
+
+  function importPlaces() {
+    var raw = el.placeBackup.value.trim();
+    if (!raw) {
+      toast("불러올 내용을 붙여넣어 주세요.");
+      return;
+    }
+
+    var parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      toast("형식이 올바르지 않습니다.");
+      return;
+    }
+
+    if (!Array.isArray(parsed)) {
+      toast("목록 형태가 아닙니다.");
+      return;
+    }
+
+    var clean = parsed
+      .filter(function (p) { return p && p.name; })
+      .map(function (p) {
+        return {
+          name: String(p.name).slice(0, 40),
+          category: PLACE_CATS.indexOf(p.category) !== -1 ? p.category : "한식",
+          walk: numOrNull(p.walk),
+          price: [1, 2, 3].indexOf(Number(p.price)) !== -1 ? Number(p.price) : null,
+          tags: Array.isArray(p.tags) ? p.tags.map(String).slice(0, 4) : [],
+          url: isHttp(p.url) ? p.url : "",
+          note: p.note ? String(p.note).slice(0, 80) : ""
+        };
+      });
+
+    if (!clean.length) {
+      toast("가져올 가게가 없습니다.");
+      return;
+    }
+
+    userPlaces = clean;
+    save(STORE.places, userPlaces);
+    endEdit();
+    afterPlacesChanged();
+    toast(clean.length + "곳을 불러왔습니다.");
+  }
+
   /* ---------- 공유 ---------- */
 
   function share() {
@@ -1067,6 +1315,8 @@
 
     el.placeEmpty.hidden = !(eat && places.length === 0);
     el.pick.disabled = eat && places.length === 0;
+    el.placePanel.hidden = !eat;
+    if (eat) renderPlaceList();
 
     buildCuisineChips();
     savePrefs();
@@ -1132,6 +1382,11 @@
   }
 
   /* ---------- 이벤트 ---------- */
+
+  el.placeForm.addEventListener("submit", submitPlace);
+  el.fCancel.addEventListener("click", endEdit);
+  el.placeExport.addEventListener("click", exportPlaces);
+  el.placeImport.addEventListener("click", importPlaces);
 
   el.modeTabs.forEach(function (tab) {
     tab.addEventListener("click", function () { selectMode(tab.dataset.mode); });
@@ -1224,6 +1479,7 @@
   function start() {
     addRecipes(window.FOODPICK_RECIPES, "FoodPick 기본 레시피");
 
+    rebuildPlaces();
     el.totalCount.textContent = menus.length;
     el.placeTotal.textContent = places.length;
     el.recipeTotalOut.textContent = recipeTotal();
