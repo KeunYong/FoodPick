@@ -1,0 +1,12 @@
+# 에디터
+.idea/
+.vscode/
+.DS_Store
+
+# 수집 도구가 만드는 데이터
+# 공개 배포 여부를 정하기 전까지는 커밋하지 않습니다.
+# 배포에 포함하려면 아래 두 줄을 지우세요.
+data/photos.json
+data/recipes.json
+
+node_modules/

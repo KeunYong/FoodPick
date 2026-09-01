@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodPick — 오늘 뭐 먹지</title>
+<meta name="description" content="아침·점심·저녁 메뉴를 식권 한 장으로 뽑고, 인기 레시피까지 바로 펼쳐보는 랜덤 메뉴 추천기.">
+<meta name="theme-color" content="#241417">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🍚</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Bebas+Neue&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap masthead__row">
+    <a class="logo" href="./">
+      <span class="logo__text">FoodPick</span>
+    </a>
+    <p class="clock">
+      <span class="clock__time" id="clockTime">--:--</span>
+      <span class="clock__sep" aria-hidden="true">·</span>
+      <span class="clock__meal" id="clockMeal">불러오는 중</span>
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 1. 뽑기 -->
+  <section class="picker" aria-labelledby="pickerTitle">
+    <h1 class="picker__title" id="pickerTitle">
+      <span class="picker__eyebrow">오늘 뭐 먹지</span>
+      식권 뽑기
+    </h1>
+
+    <div class="meals" role="tablist" aria-label="끼니 고르기">
+      <button class="meal" role="tab" data-meal="b" aria-selected="false"><span class="meal__ko">아침</span><span class="meal__en">Morning</span></button>
+      <button class="meal" role="tab" data-meal="l" aria-selected="false"><span class="meal__ko">점심</span><span class="meal__en">Noon</span></button>
+      <button class="meal" role="tab" data-meal="d" aria-selected="false"><span class="meal__ko">저녁</span><span class="meal__en">Night</span></button>
+      <button class="meal" role="tab" data-meal="*" aria-selected="false"><span class="meal__ko">아무거나</span><span class="meal__en">Any</span></button>
+    </div>
+
+    <div class="slot" id="slot">
+      <div class="ticket ticket--empty" id="ticketEmpty">
+        <div class="ticket__stub">
+          <p class="ticket__waitmark" aria-hidden="true">?</p>
+          <p class="ticket__promptline">버튼을 누르면 식권이 한 장 나옵니다.</p>
+          <p class="ticket__promptsub" id="candidateNote">후보 <b>0</b>개</p>
+        </div>
+      </div>
+
+      <article class="ticket ticket--result" id="ticket" hidden aria-live="polite">
+        <div class="ticket__photo" id="photo">
+          <img id="photoImg" alt="" hidden>
+          <span class="ticket__emoji" id="photoEmoji" aria-hidden="true">🍚</span>
+        </div>
+
+        <div class="ticket__perf" aria-hidden="true"></div>
+
+        <div class="ticket__stub">
+          <p class="ticket__label"><span id="stubMeal">점심</span> 식권</p>
+          <h2 class="ticket__name" id="name">김치찌개</h2>
+          <ul class="ticket__meta" id="meta"></ul>
+          <p class="ticket__no"><span aria-hidden="true">NO.</span><span id="serial">0000</span></p>
+          <div class="stamp" id="stamp" aria-hidden="true">
+            <span class="stamp__top">당첨</span>
+            <span class="stamp__mid" id="stampMeal">점심</span>
+            <span class="stamp__bot">FOODPICK</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn--go" id="pick">
+        <span class="btn__ko" id="pickLabel">식권 뽑기</span>
+        <span class="btn__hint">Space</span>
+      </button>
+      <div class="actions__side">
+        <button class="btn btn--ghost" id="fav" disabled aria-pressed="false">♡ 찜하기</button>
+        <button class="btn btn--ghost" id="share" disabled><span aria-hidden="true">↗</span> 공유</button>
+        <a class="btn btn--ghost" id="search" hidden target="_blank" rel="noopener"><span aria-hidden="true">🔎</span> 더 찾아보기</a>
+      </div>
+    </div>
+    <p class="toast" id="toast" role="status" aria-live="polite"></p>
+  </section>
+
+  <!-- 2. 뽑힌 메뉴의 인기 레시피 -->
+  <section class="recipes" id="recipeSection" hidden aria-labelledby="recipeTitle">
+    <div class="sec__head">
+      <h2 class="sec__title" id="recipeTitle"><span id="recipeFor">메뉴</span> 인기 레시피</h2>
+      <span class="sec__count" id="recipeCount"></span>
+    </div>
+    <ul class="rlist" id="recipeList"></ul>
+    <p class="empty" id="recipeEmpty" hidden></p>
+  </section>
+
+  <!-- 3. 오늘의 추천 -->
+  <section class="today" id="todaySection" aria-labelledby="todayTitle">
+    <div class="sec__head">
+      <h2 class="sec__title" id="todayTitle">오늘 <span id="todayMeal">점심</span> 추천</h2>
+      <button class="linkbtn" id="rerollToday">다른 추천 보기</button>
+    </div>
+    <ul class="cards" id="todayList"></ul>
+  </section>
+
+  <!-- 필터 -->
+  <details class="panel" id="filterPanel">
+    <summary class="panel__head">
+      <span class="panel__title">필터</span>
+      <span class="panel__count" id="filterCount">전체</span>
+    </summary>
+    <div class="panel__body">
+      <fieldset class="field">
+        <legend class="field__label">종류</legend>
+        <div class="chips" id="cuisineChips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field__label">매운맛</legend>
+        <div class="chips" id="spicyChips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field__label">조리시간 <output id="minutesOut">전체</output></legend>
+        <input type="range" id="minutes" min="10" max="120" step="10" value="120">
+      </fieldset>
+
+      <fieldset class="field field--row">
+        <label class="toggle"><input type="checkbox" id="vegOnly"> 채식만</label>
+        <label class="toggle"><input type="checkbox" id="avoidRecent" checked> 최근 뽑은 메뉴 제외</label>
+        <label class="toggle"><input type="checkbox" id="recipeOnly"> 레시피 있는 메뉴만</label>
+      </fieldset>
+
+      <button class="btn btn--reset" id="resetFilters">필터 초기화</button>
+    </div>
+  </details>
+
+  <!-- 보관함 -->
+  <section class="panel panel--list" id="boxSection" hidden aria-labelledby="boxTitle">
+    <div class="panel__head panel__head--static">
+      <span class="panel__title" id="boxTitle">보관함</span>
+      <span class="panel__count" id="boxCount"></span>
+    </div>
+
+    <div class="box" id="savedBlock" hidden>
+      <h3 class="box__label">저장한 레시피</h3>
+      <ul class="rlist rlist--saved" id="savedList"></ul>
+    </div>
+
+    <div class="box" id="favBlock" hidden>
+      <h3 class="box__label">찜한 메뉴</h3>
+      <ul class="favs" id="favs"></ul>
+    </div>
+  </section>
+
+  <!-- 기록 -->
+  <section class="panel panel--list" id="historySection" hidden aria-labelledby="historyTitle">
+    <div class="panel__head panel__head--static">
+      <span class="panel__title" id="historyTitle">사용한 식권</span>
+      <button class="linkbtn" id="clearHistory">기록 지우기</button>
+    </div>
+    <ul class="stubs" id="history"></ul>
+  </section>
+
+</main>
+
+<footer class="foot wrap">
+  <p>메뉴 <b id="totalCount">0</b>종 · 레시피 <b id="recipeTotal">0</b>건</p>
+  <p class="foot__note">레시피 출처는 각 카드에 표기됩니다. 공공데이터는 출처 표시 조건으로 사용합니다.</p>
+</footer>
+
+<script src="assets/js/menus.js"></script>
+<script src="assets/js/recipes.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
