@@ -800,6 +800,8 @@ input[type="range"] {
   color: var(--yellow);
 }
 
+.rcard__facts .is-rating { color: var(--red); }
+
 .rcard__src {
   margin: 0;
   font-size: .72rem;
@@ -895,7 +897,20 @@ input[type="range"] {
   counter-increment: step;
   display: grid;
   grid-template-columns: 1.8rem 1fr;
-  gap: .5rem;
+  gap: .2rem .5rem;
+}
+
+.steps__text { margin: 0; }
+
+/* 단계별 사진 — 글 아래, 번호 열은 비워 들여쓰기를 맞춥니다 */
+.steps__img {
+  grid-column: 2;
+  width: 100%;
+  max-width: 10rem;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 3px;
+  margin-top: .35rem;
 }
 
 .steps li::before {

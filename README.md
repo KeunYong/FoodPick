@@ -71,15 +71,48 @@ node tools/fetch-recipes.mjs --key=발급받은키 --check
 node tools/fetch-recipes.mjs --key=발급받은키
 ```
 
-### 썸네일 채우기 — 만개의레시피
+### 만개의레시피 수집 — `tools/crawl.mjs`
 
-메뉴 이름으로 검색해 **첫 결과의 썸네일 URL과 레시피 주소만** 기록합니다.
-레시피 본문은 가져오지 않고, 앱은 저장된 주소로 원문을 링크합니다.
+두 가지 모드가 있습니다.
 
 ```bash
-node tools/crawl.mjs --check     # 선택자가 아직 유효한지 1건 확인
-node tools/crawl.mjs             # data/photos.json 채우기 (이어받기 지원)
+# 파서 검증 — 저장한 페이지로, 네트워크 요청 없이
+node tools/crawl.mjs --detail --check --file=page.html
+
+# 검색 목록 파서가 아직 맞는지 1건 확인
+node tools/crawl.mjs --check
+
+# 썸네일 + 원문 링크만  → data/photos.json
+node tools/crawl.mjs
+
+# 재료 · 조리순서 · 단계별 사진까지  → data/recipes.json
+node tools/crawl.mjs --detail --menus=김치찌개,떡볶이     # 특정 메뉴만
+node tools/crawl.mjs --detail                          # 전체 (약 40분)
 ```
+
+옵션: `--per=3` 메뉴당 레시피 수, `--limit=20` 메뉴 수, `--delay=1200` 간격,
+`--force` 재수집, `--ua="..."`.
+
+**파싱은 `schema.org/Recipe` JSON-LD 를 씁니다.** 클래스명을 긁는 방식은
+페이지가 개편되면 바로 깨집니다 (실제로 `ingre_list_ingre`, `step_list_txt`
+같은 이름은 지금 페이지에 없습니다). JSON-LD 에서 제목·사진·재료·조리순서·
+단계별 사진·조리시간·분량·작성자·평점을 한 번에 얻고, 난이도만 HTML 에서
+읽습니다.
+
+실행 전에 알아둘 것:
+
+- 이 스크립트는 **사용자가 직접 실행하는 도구**입니다. 사이트의 robots.txt 는
+  `ClaudeBot` 을 전체 차단하고 `Content-Signal: ai-train=no, use=reference` 를
+  선언하고 있어, AI 에이전트가 대신 수집하지 않습니다. 파서만 import 해도
+  수집이 시작되지 않도록 엔트리포인트 가드가 걸려 있습니다.
+- 시작할 때 robots.txt 를 다시 읽어 `User-agent: *` 기준으로 대상 경로가
+  막혀 있으면 스스로 중단합니다. 요청 간격은 기본 1.2초입니다.
+- 재료·조리순서·사진의 저작권은 **사이트가 아니라 레시피를 올린 개인**에게
+  있습니다. 수집 결과에는 작성자 이름과 원문 주소가 항상 함께 저장되고, 앱은
+  카드마다 `출처 · 만개의레시피 · 작성자` 를 표기하고 `원문 보기` 버튼을 답니다.
+  그래도 이걸 공개 사이트에 재배포하는 것은 별개의 판단입니다. 그래서
+  `data/recipes.json` 과 `data/photos.json` 은 기본적으로 `.gitignore` 에
+  있습니다. 공개 배포하려면 그 두 줄을 지우세요.
 
 실행 전에 알아둘 것:
 
@@ -98,12 +131,19 @@ node tools/crawl.mjs             # data/photos.json 채우기 (이어받기 지�
 
 ```js
 {
-  id, title, minutes, servings, difficulty, kcal, image,
+  id, title,
+  minutes, servings, difficulty, kcal,   // 없으면 null — 카드에서 생략됩니다
+  rating, reviews,                       // 평점과 리뷰 수 (선택)
+  image,                                 // 대표 사진 URL
   ingredients: [{ name, amount }],
   steps: ["...", ...],
-  source: { name, url }     // 출처 표기 (필수)
+  stepImages: [url|null, ...],           // steps 와 같은 순서 (선택)
+  source: { name, url }                  // 출처 표기 (필수)
 }
 ```
+
+앱은 `http(s)` 로 시작하지 않는 이미지 URL을 버리고, 모든 문자열을
+`textContent` 로만 넣습니다.
 
 `data/recipes.json` 을 이 모양으로 만들어 주는 스크립트만 새로 쓰면
 앱은 손대지 않아도 됩니다. `tools/fetch-recipes.mjs` 가 그 예입니다.

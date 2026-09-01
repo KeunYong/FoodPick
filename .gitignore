@@ -9,4 +9,8 @@
 data/photos.json
 data/recipes.json
 
+# 파서 검증용으로 저장한 원문 페이지 (제3자 저작물)
+page.html
+*.page.html
+
 node_modules/

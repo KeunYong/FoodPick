@@ -23,7 +23,7 @@
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MENUS_JS = join(ROOT, "assets", "js", "menus.js");
@@ -253,7 +253,14 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(`\n중단: ${err.message}`);
-  process.exit(1);
-});
+/* 이 파일을 직접 실행했을 때만 동작합니다.
+   파서를 다른 스크립트에서 import 해도 수집이 시작되지 않게 하는 안전장치입니다. */
+const isEntryPoint = process.argv[1]
+  && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+
+if (isEntryPoint) {
+  main().catch((err) => {
+    console.error(`\n중단: ${err.message}`);
+    process.exit(1);
+  });
+}

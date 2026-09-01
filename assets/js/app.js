@@ -90,19 +90,27 @@
       servings: numOrNull(r.servings),
       difficulty: r.difficulty ? String(r.difficulty) : null,
       kcal: numOrNull(r.kcal),
-      image: typeof r.image === "string" && /^https?:\/\//.test(r.image) ? r.image : null,
+      image: isHttp(r.image) ? r.image : null,
       ingredients: Array.isArray(r.ingredients)
         ? r.ingredients.filter(function (x) { return x && x.name; }).map(function (x) {
             return { name: String(x.name), amount: x.amount ? String(x.amount) : "" };
           })
         : [],
       steps: Array.isArray(r.steps) ? r.steps.filter(Boolean).map(String) : [],
+      stepImages: Array.isArray(r.stepImages)
+        ? r.stepImages.map(function (u) { return isHttp(u) ? u : null; })
+        : [],
+      rating: numOrNull(r.rating),
+      reviews: isFinite(Number(r.reviews)) && Number(r.reviews) >= 0 ? Number(r.reviews) : null,
       source: {
         name: r.source && r.source.name ? String(r.source.name) : tag,
-        url: r.source && typeof r.source.url === "string" && /^https?:\/\//.test(r.source.url)
-          ? r.source.url : ""
+        url: r.source && isHttp(r.source.url) ? r.source.url : ""
       }
     };
+  }
+
+  function isHttp(v) {
+    return typeof v === "string" && /^https?:\/\/\S+$/.test(v);
   }
 
   function numOrNull(v) {
@@ -456,6 +464,10 @@
     head.appendChild(makeEl("h3", "rcard__title", recipe.title));
 
     var facts = makeEl("ul", "rcard__facts");
+    if (recipe.rating) {
+      facts.appendChild(makeEl("li", "is-rating",
+        "★ " + recipe.rating.toFixed(1) + (recipe.reviews ? " (" + recipe.reviews + ")" : "")));
+    }
     if (recipe.minutes) facts.appendChild(makeEl("li", "", recipe.minutes + "분"));
     if (recipe.servings) facts.appendChild(makeEl("li", "", recipe.servings + "인분"));
     if (recipe.difficulty) facts.appendChild(makeEl("li", "", recipe.difficulty));
@@ -508,7 +520,23 @@
     if (recipe.steps.length) {
       body.appendChild(makeEl("h4", "rcard__sub", "조리순서"));
       var ol = makeEl("ol", "steps");
-      recipe.steps.forEach(function (s) { ol.appendChild(makeEl("li", "", s)); });
+
+      recipe.steps.forEach(function (text, i) {
+        var step = makeEl("li");
+        step.appendChild(makeEl("p", "steps__text", text));
+
+        var shot = recipe.stepImages[i];
+        if (shot) {
+          var img = makeEl("img", "steps__img");
+          img.alt = "";
+          img.loading = "lazy";
+          img.src = shot;
+          img.addEventListener("error", function () { img.remove(); });
+          step.appendChild(img);
+        }
+        ol.appendChild(step);
+      });
+
       body.appendChild(ol);
     }
 
