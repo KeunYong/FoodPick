@@ -23,6 +23,10 @@
   var CUISINES = { ko: "한식", cn: "중식", jp: "일식", we: "양식", as: "아시안", bs: "분식" };
   var MEALS = { b: "아침", l: "점심", d: "저녁", "*": "아무거나" };
   var SPICY = ["안 매움", "약간 매움", "매움", "아주 매움"];
+
+  /* '아무거나' 는 시간대를 아예 따지지 않는 모드입니다.
+     식권에 현재 시각 기준 끼니를 찍으면 모드와 어긋나므로 '종일' 로 표기합니다. */
+  var ALL_DAY = "종일";
   var SEARCH_URL = "https://www.10000recipe.com/recipe/list.html?q=";
 
   var STORE = {
@@ -132,7 +136,7 @@
     recipeSection: $("recipeSection"), recipeFor: $("recipeFor"),
     recipeCount: $("recipeCount"), recipeList: $("recipeList"), recipeEmpty: $("recipeEmpty"),
 
-    todaySection: $("todaySection"), todayMeal: $("todayMeal"),
+    todaySection: $("todaySection"), todayTitle: $("todayTitle"),
     todayList: $("todayList"), rerollToday: $("rerollToday"),
 
     filterCount: $("filterCount"), cuisineChips: $("cuisineChips"), spicyChips: $("spicyChips"),
@@ -326,7 +330,7 @@
     el.ticketEmpty.hidden = true;
     el.ticket.hidden = false;
 
-    var mealLabel = MEALS[state.meal === "*" ? mealOfHour(new Date().getHours()) : state.meal];
+    var mealLabel = state.meal === "*" ? ALL_DAY : MEALS[state.meal];
     el.stubMeal.textContent = mealLabel;
     el.stampMeal.textContent = mealLabel;
 
@@ -691,11 +695,13 @@
   /* ---------- 오늘의 추천 ---------- */
 
   function renderToday() {
-    var meal = state.meal === "*" ? mealOfHour(new Date().getHours()) : state.meal;
-    el.todayMeal.textContent = MEALS[meal];
+    var anyMeal = state.meal === "*";
+    var meal = anyMeal ? "*" : state.meal;
+
+    el.todayTitle.textContent = anyMeal ? "끼니 안 가리고 추천" : "오늘 " + MEALS[meal] + " 추천";
 
     var pool = menus.filter(function (m) {
-      if (m.meals.indexOf(meal) === -1) return false;
+      if (!anyMeal && m.meals.indexOf(meal) === -1) return false;
       if (state.cuisines.length && state.cuisines.indexOf(m.cuisine) === -1) return false;
       if (m.minutes > state.maxMinutes) return false;
       if (state.vegOnly && !m.veg) return false;

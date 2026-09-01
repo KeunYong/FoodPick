@@ -130,7 +130,7 @@ body {
 
 .meals {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: .4rem;
   margin-bottom: 1.5rem;
 }
@@ -161,6 +161,19 @@ body {
 }
 
 .meal:hover { border-color: var(--yellow); }
+
+/* 끼니를 아예 안 따지는 모드. 세 끼니와 성격이 달라 한 줄을 통째로 씁니다. */
+.meal--all {
+  grid-column: 1 / -1;
+  grid-auto-flow: column;
+  gap: .5rem;
+  align-items: baseline;
+  border-style: dashed;
+  border-color: rgba(240,228,221,.3);
+  padding-block: .5rem .45rem;
+}
+
+.meal--all[aria-selected="true"] { border-style: solid; }
 
 .meal[aria-selected="true"] {
   background: var(--yellow);
@@ -674,7 +687,6 @@ input[type="range"] {
 /* ---------- 좁은 화면 ---------- */
 
 @media (max-width: 30rem) {
-  .meals { grid-template-columns: repeat(2, 1fr); }
   .ticket__name { padding-right: 0; }
   .stamp { right: .8rem; bottom: .8rem; width: 4.4rem; height: 4.4rem; }
   .stamp__mid { font-size: 1.1rem; }

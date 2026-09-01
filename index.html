@@ -40,7 +40,7 @@
       <button class="meal" role="tab" data-meal="b" aria-selected="false"><span class="meal__ko">아침</span><span class="meal__en">Morning</span></button>
       <button class="meal" role="tab" data-meal="l" aria-selected="false"><span class="meal__ko">점심</span><span class="meal__en">Noon</span></button>
       <button class="meal" role="tab" data-meal="d" aria-selected="false"><span class="meal__ko">저녁</span><span class="meal__en">Night</span></button>
-      <button class="meal" role="tab" data-meal="*" aria-selected="false"><span class="meal__ko">아무거나</span><span class="meal__en">Any</span></button>
+      <button class="meal meal--all" role="tab" data-meal="*" aria-selected="false"><span class="meal__ko">아무거나</span><span class="meal__en">All day</span></button>
     </div>
 
     <div class="slot" id="slot">
@@ -101,7 +101,7 @@
   <!-- 3. 오늘의 추천 -->
   <section class="today" id="todaySection" aria-labelledby="todayTitle">
     <div class="sec__head">
-      <h2 class="sec__title" id="todayTitle">오늘 <span id="todayMeal">점심</span> 추천</h2>
+      <h2 class="sec__title" id="todayTitle">오늘 추천</h2>
       <button class="linkbtn" id="rerollToday">다른 추천 보기</button>
     </div>
     <ul class="cards" id="todayList"></ul>
